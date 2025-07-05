@@ -2,6 +2,7 @@ import click
 import json
 from .health import get_server_health
 from .docker_health import get_docker_health
+from .alert import send_alert
 
 
 @click.group()
@@ -19,10 +20,19 @@ def check():
 @check.command(name="server")
 @click.option("--format", default="text", help="Output format (text/json)", type=click.Choice(["text", "json"]))
 @click.option("--detailed", is_flag=True, help="Show detailed metrics (network, uptime, processes, load)")
-def server(format: str, detailed: bool):
+@click.option("--alert", is_flag=True, help="Send email alert if metrics exceed thresholds")
+def server(format: str, detailed: bool, alert: bool):
     """Check server health (CPU, memory, disk, and optional detailed metrics)."""
     try:
         health = get_server_health(detailed=detailed)
+        if alert:
+            alert_config = {
+                "cpu_threshold": 80, "memory_threshold": 80,
+                "email_from": "alert@infrahealth.com", "email_to": "admin@infrahealth.com",
+                "smtp_host": "smtp.example.com", "smtp_port": 587,
+                "email_user": "user", "email_password": "pass"
+            }
+            send_alert(health, alert_config)
         if format == "json":
             click.echo(json.dumps(health, indent=2))
         else:
@@ -53,13 +63,22 @@ def server(format: str, detailed: bool):
 @check.command(name="docker")
 @click.option("--format", default="text", help="Output format (text/json)", type=click.Choice(["text", "json"]))
 @click.option("--detailed", is_flag=True, help="Show detailed metrics (network, restart count)")
-def docker(format: str, detailed: bool):
+@click.option("--alert", is_flag=True, help="Send email alert if metrics exceed thresholds")
+def docker(format: str, detailed: bool, alert: bool):
     """Check health of running Docker containers."""
     try:
         health = get_docker_health(detailed=detailed)
         if not health:
             click.echo("No running Docker containers found.")
             return
+        if alert:
+            alert_config = {
+                "cpu_threshold": 80, "memory_threshold": 80, "restart_threshold": 5,
+                "email_from": "alert@infrahealth.com", "email_to": "admin@infrahealth.com",
+                "smtp_host": "smtp.example.com", "smtp_port": 587,
+                "email_user": "user", "email_password": "pass"
+            }
+            send_alert(health, alert_config)
         if format == "json":
             click.echo(json.dumps(health, indent=2))
         else:
