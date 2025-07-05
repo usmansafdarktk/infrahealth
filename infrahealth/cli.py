@@ -64,10 +64,11 @@ def server(format: str, detailed: bool, alert: bool):
 @click.option("--format", default="text", help="Output format (text/json)", type=click.Choice(["text", "json"]))
 @click.option("--detailed", is_flag=True, help="Show detailed metrics (network, restart count)")
 @click.option("--alert", is_flag=True, help="Send email alert if metrics exceed thresholds")
-def docker(format: str, detailed: bool, alert: bool):
+@click.option("--app-check", is_flag=True, help="Check application health via HTTP endpoint")
+def docker(format: str, detailed: bool, alert: bool, app_check: bool):
     """Check health of running Docker containers."""
     try:
-        health = get_docker_health(detailed=detailed)
+        health = get_docker_health(detailed=detailed, app_check=app_check)
         if not health:
             click.echo("No running Docker containers found.")
             return
@@ -95,6 +96,8 @@ def docker(format: str, detailed: bool, alert: bool):
                         f"Network Received: {container['network_bytes_received']:,} bytes",
                         f"Restarts: {container['restart_count']}"
                     ])
+                if app_check:
+                    output.append(f"App Health: {container['app_health']}")
                 click.echo("\n".join(output))
                 click.echo("-" * 40)
     except RuntimeError as e:

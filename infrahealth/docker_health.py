@@ -9,24 +9,11 @@ logging.basicConfig(
 )
 
 
-def get_docker_health(detailed: bool = False) -> List[Dict]:
-    """
-    Fetch health metrics for all running Docker containers.
-
-    Args:
-        detailed (bool): If True, include additional metrics (network, restart count).
-
-    Returns:
-        List of dicts containing container metrics (name, status, CPU, memory, etc.).
-
-    Raises:
-        RuntimeError: If accessing Docker daemon fails (e.g., permission denied).
-    """
+def get_docker_health(detailed: bool = False, app_check: bool = False) -> List[Dict]:
     try:
         client = docker.from_env()
         containers = client.containers.list()
         health_data = []
-
         for container in containers:
             stats = container.stats(stream=False)
             data = {
@@ -41,8 +28,9 @@ def get_docker_health(detailed: bool = False) -> List[Dict]:
                     "network_bytes_received": stats["networks"].get("eth0", {}).get("rx_bytes", 0),
                     "restart_count": container.attrs["RestartCount"]
                 })
+            if app_check:
+                data.update(check_app_health(container))
             health_data.append(data)
-
         logging.info("Fetched Docker health: %s", health_data)
         return health_data
     except docker.errors.DockerException as e:
@@ -52,6 +40,19 @@ def get_docker_health(detailed: bool = False) -> List[Dict]:
     finally:
         if 'client' in locals():
             client.close()
+
+
+def check_app_health(container: docker.models.containers.Container) -> Dict:
+    """Check application health via HTTP endpoint."""
+    try:
+        # Example: Check if container exposes a health endpoint
+        exec_result = container.exec_run(
+            "curl --fail http://localhost/health || exit 1")
+        return {"app_health": "healthy" if exec_result.exit_code == 0 else "unhealthy"}
+    except docker.errors.APIError as e:
+        logging.error("Failed to check app health for %s: %s",
+                      container.name, str(e))
+        return {"app_health": "unhealthy"}
 
 
 def calculate_cpu_percent(stats: Dict) -> float:
