@@ -108,6 +108,18 @@ def docker(format: str, detailed: bool, alert: bool, app_check: bool):
 cli.add_command(check)
 
 
+@cli.command(name="start-prometheus")
+@click.option("--port", default=8000, help="Port for Prometheus exporter", type=int)
+def start_prometheus(port: int):
+    """Start Prometheus exporter for server and Docker metrics."""
+    from .prometheus_exporter import export_metrics
+    try:
+        export_metrics(port)
+    except Exception as e:
+        click.echo(f"Error: {str(e)}", err=True)
+        exit(1)
+
+
 def main():
     """Entry point for the CLI."""
     cli()
