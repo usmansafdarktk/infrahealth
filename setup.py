@@ -10,6 +10,6 @@ setup(
             "infrahealth = infrahealth.cli:main"
         ]
     },
-    author="Usman Safder"
+    author="Usman Safder",
     description="A CLI for infrastructure health monitoring",
 )
