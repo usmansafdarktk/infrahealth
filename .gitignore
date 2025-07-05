@@ -1,3 +1,7 @@
+*.log
+*.egg-info/
 venv/
 __pycache__/
+prometheus-*.linux-amd64/
+*.tar.gz
 *.pyc
